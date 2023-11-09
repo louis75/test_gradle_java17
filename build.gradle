@@ -1,0 +1,138 @@
+plugins {
+    id 'application'
+    id 'java'
+    id 'eclipse'
+    id 'io.spring.dependency-management' version '1.+'
+    id 'jacoco'
+    id 'org.sonarqube' version 'latest.release'
+    id 'com.diffplug.spotless' version '6.21.0'
+    id 'com.adarshr.test-logger' version '3.+'
+    id 'org.barfuin.gradle.jacocolog' version '3.+'
+    id 'org.springframework.boot' version '3.1.4'
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+compileJava {
+    options.compilerArgs << "-Xlint:all,-serial,-processing" << "-Werror" << '-parameters'
+    options.encoding = 'UTF-8'
+}
+
+dependencyManagement {
+    imports {
+        mavenBom('org.springframework.cloud:spring-cloud-dependencies:2022.0.1')
+        mavenBom('io.awspring.cloud:spring-cloud-aws-dependencies:3.0.0')
+        mavenBom('com.amazonaws:aws-java-sdk-bom:1.12.389')
+        mavenBom('com.amazonaws:aws-xray-recorder-sdk-bom:2.14.0')
+        mavenBom('com.fasterxml.jackson:jackson-bom:2.15.0')
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven { url 'https://projectlombok.org/edge-releases' }
+}
+
+ext {
+    set('snippetsDir', file('build/generated-snippets'))
+}
+
+
+dependencies {
+
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-guava'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+    implementation 'com.google.guava:guava:31.1-jre'
+    implementation 'software.amazon.awssdk:rds:2.20.15'
+    implementation 'com.amazonaws:aws-xray-recorder-sdk-aws-sdk-v2'
+    implementation 'com.amazonaws:aws-xray-recorder-sdk-aws-sdk-v2-instrumentor'
+    implementation 'com.amazonaws:aws-xray-recorder-sdk-apache-http'
+    implementation 'com.amazonaws:aws-xray-recorder-sdk-sql'
+    implementation 'com.amazonaws:aws-xray-recorder-sdk-sql-postgres'
+    implementation 'com.amazonaws:aws-xray-recorder-sdk-slf4j'
+    implementation 'com.amazonaws:aws-xray-recorder-sdk-spring'
+    implementation 'org.springframework.boot:spring-boot-starter-hateoas'
+    implementation 'org.springframework.security:spring-security-oauth2-jose'
+    implementation 'io.awspring.cloud:spring-cloud-aws-starter-secrets-manager'
+    implementation 'org.apache.commons:commons-lang3:3.12.0'
+
+    implementation 'io.awspring.cloud:spring-cloud-aws-starter-s3'
+
+    implementation 'org.springframework.security:spring-security-oauth2-resource-server'
+    implementation 'de.codecentric:spring-boot-admin-starter-client:3.0.0-M8'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jdbc'
+
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-quartz'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
+    implementation 'org.springframework.retry:spring-retry'
+    implementation 'io.micrometer:micrometer-registry-cloudwatch2'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.0.2'
+    implementation 'ch.qos.logback.contrib:logback-json-classic:0.1.5'
+    implementation 'ch.qos.logback.contrib:logback-jackson:0.1.5'
+    implementation 'org.postgresql:postgresql:42.6.0'
+    implementation 'software.amazon.jdbc:aws-advanced-jdbc-wrapper:1.0.1'
+
+    compileOnly 'org.projectlombok:lombok:edge-SNAPSHOT'
+    annotationProcessor 'org.projectlombok:lombok:edge-SNAPSHOT'
+
+    testAnnotationProcessor 'org.projectlombok:lombok:edge-SNAPSHOT'
+    testImplementation 'org.projectlombok:lombok:edge-SNAPSHOT'
+
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+
+    testImplementation('org.springframework.boot:spring-boot-starter-test'){
+        exclude group: 'org.mockito', module: 'mockito-core'
+    }
+    testImplementation 'org.springframework.restdocs:spring-restdocs-mockmvc'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testImplementation 'io.rest-assured:spring-mock-mvc:5.3.0'
+    testImplementation 'org.mockito:mockito-inline:4.8.1'
+    testImplementation 'org.awaitility:awaitility:4.2.0'
+    testImplementation 'com.github.stefanbirkner:system-rules:1.19.0'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.fork = true
+}
+
+tasks.named('test') {
+    outputs.dir snippetsDir
+    useJUnitPlatform()
+}
+
+
+
+jacoco {
+    toolVersion = "0.8.10"
+}
+
+jacocoTestReport {
+    dependsOn test // tests are required to run before generating the report
+
+    reports {
+        xml.required = true
+        csv.required = false
+        html.required = true
+    }
+
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: [
+                '**/spring/config/*',
+                '**/data/*',
+                '**/*Application.class',
+                '**/*SpringConfig.class',
+                '**/*BeanDefinitionRegistrar.class',
+            ])
+        }))
+    }
+}
